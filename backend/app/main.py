@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import init_db, _session_factory as async_session_factory
 from app.api.v1.router import api_router
 
 logging.basicConfig(
@@ -20,10 +20,38 @@ logging.basicConfig(
 logger = logging.getLogger("leaklens")
 
 
+async def seed_demo_user() -> None:
+    """Create demo user on first startup if it doesn't exist."""
+    from sqlalchemy import select
+    from app.models.user import User
+    from app.core.security import hash_password
+
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.email == "lakshaysoni@gmail.com"))
+        if result.scalar_one_or_none() is None:
+            import uuid
+            demo = User(
+                id=uuid.uuid4(),
+                email="lakshaysoni@gmail.com",
+                username="lakshaysoni",
+                hashed_password=hash_password("123456789"),
+                full_name="Lakshay Soni",
+                role="admin",
+                is_active=True,
+                is_verified=True,
+            )
+            session.add(demo)
+            await session.commit()
+            logger.info("✅ Demo admin user created: lakshaysoni@gmail.com")
+        else:
+            logger.info("ℹ️ Demo user already exists")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("🔒 LEAKLENS API starting …")
     await init_db()
+    await seed_demo_user()
     logger.info("✅ Database initialised")
     yield
     logger.info("LEAKLENS API shutting down")

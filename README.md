@@ -111,7 +111,7 @@ This is a **production-grade SaaS platform** — not a student project. It featu
 | **SQLAlchemy 2.0** | Async ORM with SQLite (swappable to PostgreSQL) |
 | **Pydantic v2** | Request/response validation |
 | **python-jose** | JWT token management |
-| **passlib[bcrypt]** | Secure password hashing |
+| **bcrypt** | Secure password hashing (Python 3.14 compatible) |
 | **PyOTP** | TOTP-based 2FA |
 | **httpx** | Async HTTP client for external APIs |
 | **dnspython** | DNS resolution for domain scanning |
@@ -197,6 +197,18 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 🔐 Demo Login Credentials
+
+> **⚠️ These credentials are required to log in to the demo application.**
+
+| Field | Value |
+|-------|-------|
+| **Email** | `lakshaysoni@gmail.com` |
+| **Password** | `123456789` |
+| **Role** | Admin (full access to all features + admin panel) |
+
+The demo user is automatically created when the backend starts. Login at `/auth/login` to access the dashboard.
 
 Open **http://localhost:5173** in your browser.
 

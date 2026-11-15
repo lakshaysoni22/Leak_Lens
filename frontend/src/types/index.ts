@@ -125,6 +125,7 @@ export interface DashboardOverview {
   stats: DashboardStats;
   risk_distribution: RiskDistribution;
   trend: TrendPoint[];
+  scan_type_breakdown?: Record<string, number>;
   recent_assessments: AssessmentListItem[];
 }
 

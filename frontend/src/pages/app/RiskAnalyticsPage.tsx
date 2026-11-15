@@ -102,12 +102,20 @@ export default function RiskAnalyticsPage() {
               <CardHeader><CardTitle>Risk by Scan Type</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { type: 'Email Scans', pct: 45, color: '#A3FF6F' },
-                    { type: 'Username Scans', pct: 30, color: '#45D6FF' },
-                    { type: 'Domain Scans', pct: 15, color: '#8B7CFF' },
-                    { type: 'Phishing Analysis', pct: 10, color: '#FFB547' },
-                  ].map(item => (
+                  {(() => {
+                    const types = data?.scan_type_breakdown ?? {};
+                    const emailC = types.email ?? 0;
+                    const usernameC = types.username ?? 0;
+                    const domainC = types.domain ?? 0;
+                    const phishingC = types.phishing ?? types.url ?? 0;
+                    const t = emailC + usernameC + domainC + phishingC || 1;
+                    return [
+                      { type: 'Email Scans', pct: Math.round((emailC / t) * 100), color: '#A3FF6F' },
+                      { type: 'Username Scans', pct: Math.round((usernameC / t) * 100), color: '#45D6FF' },
+                      { type: 'Domain Scans', pct: Math.round((domainC / t) * 100), color: '#8B7CFF' },
+                      { type: 'Phishing Analysis', pct: Math.round((phishingC / t) * 100), color: '#FFB547' },
+                    ];
+                  })().map(item => (
                     <div key={item.type}>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-text-secondary">{item.type}</span>

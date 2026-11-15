@@ -444,10 +444,10 @@ const DashboardPage: React.FC = () => {
                 data={recentAssessments}
                 keyExtractor={(item) => item.id}
                 onRowClick={(item) => {
-                  if (item.scan_type === 'email') navigate('/app/scan/email');
-                  else if (item.scan_type === 'username') navigate('/app/scan/username');
-                  else if (item.scan_type === 'domain') navigate('/app/scan/domain');
-                  else navigate('/app/scan/phishing');
+                  if (item.scan_type === 'email') navigate('/app/email-scanner');
+                  else if (item.scan_type === 'username') navigate('/app/username-scanner');
+                  else if (item.scan_type === 'domain') navigate('/app/domain-scanner');
+                  else navigate('/app/phishing');
                 }}
               />
             ) : (
@@ -456,7 +456,7 @@ const DashboardPage: React.FC = () => {
                 title="No Assessments Performed"
                 description="Initiate your first reconnaissance scan to monitor compromised credentials and malicious domains."
                 actionLabel="Start Email Scan"
-                onAction={() => navigate('/app/scan/email')}
+                onAction={() => navigate('/app/email-scanner')}
               />
             )}
           </CardContent>
@@ -518,7 +518,7 @@ const DashboardPage: React.FC = () => {
             <button
               onClick={() => {
                 setIsScanModalOpen(false);
-                navigate('/app/scan/email');
+                navigate('/app/email-scanner');
               }}
               className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[#A3FF6F]/10 hover:border-[#A3FF6F]/40 transition-all text-left flex flex-col gap-2 group"
             >
@@ -538,7 +538,7 @@ const DashboardPage: React.FC = () => {
             <button
               onClick={() => {
                 setIsScanModalOpen(false);
-                navigate('/app/scan/username');
+                navigate('/app/username-scanner');
               }}
               className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[#8B7CFF]/10 hover:border-[#8B7CFF]/40 transition-all text-left flex flex-col gap-2 group"
             >
@@ -558,7 +558,7 @@ const DashboardPage: React.FC = () => {
             <button
               onClick={() => {
                 setIsScanModalOpen(false);
-                navigate('/app/scan/domain');
+                navigate('/app/domain-scanner');
               }}
               className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[#45D6FF]/10 hover:border-[#45D6FF]/40 transition-all text-left flex flex-col gap-2 group"
             >
@@ -578,7 +578,7 @@ const DashboardPage: React.FC = () => {
             <button
               onClick={() => {
                 setIsScanModalOpen(false);
-                navigate('/app/scan/phishing');
+                navigate('/app/phishing');
               }}
               className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-[#FF5A5A]/10 hover:border-[#FF5A5A]/40 transition-all text-left flex flex-col gap-2 group"
             >

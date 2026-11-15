@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ssl
 import socket
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.core.dependencies import get_current_user
+from app.core.security import hmac_hash
+from app.models.assessment import Assessment
+from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.assessment import DomainScanRequest
 
@@ -106,10 +110,11 @@ def _compute_domain_score(ssl_info: dict, dns_info: dict) -> tuple[float, str]:
     return round(score, 1), level
 
 
-@router.post("/assess")
+@router.post("/scan")
 async def assess_domain(
     data: DomainScanRequest,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     domain = data.domain.lower().strip()
 
@@ -146,7 +151,43 @@ async def assess_domain(
         "Enable DNSSEC if your registrar supports it",
     ]
 
+    # Persist to Assessment table
+    id_hash = hmac_hash(domain)
+    assessment = Assessment(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        scan_type="domain",
+        identifier_hash=id_hash,
+        identifier_hint=domain,
+        risk_score=float(100.0 - score),  # Convert security score to risk score
+        risk_level={"good": "low", "fair": "medium", "poor": "high", "critical": "critical"}.get(level, "medium"),
+        exposure_count=len(findings),
+        data_source="live_scan",
+        summary=f"Domain security assessment — security score: {score}/100 ({level})",
+        recommendations=recommendations,
+        raw_result={"ssl": ssl_info, "dns": dns_info, "findings": findings},
+        is_demo=False,
+    )
+    db.add(assessment)
+
+    # Auto-create notification
+    risk_level = assessment.risk_level
+    notif = Notification(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        title="Domain Scan Complete",
+        message=f"Domain scan for {domain} — security score: {score}/100 ({level}), {len(findings)} finding(s)",
+        notification_type="alert" if risk_level in ("high", "critical") else "info",
+        category="scan_result",
+        action_url="/app/exposure-history",
+    )
+    db.add(notif)
+
+    await db.commit()
+    await db.refresh(assessment)
+
     return {
+        "assessment_id": str(assessment.id),
         "domain": domain,
         "security_score": score,
         "security_level": level,
@@ -155,5 +196,5 @@ async def assess_domain(
         "findings": findings,
         "recommendations": recommendations,
         "data_notice": "Domain scan uses read-only DNS and TLS checks only. No active probing is performed.",
-        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "scanned_at": assessment.created_at.isoformat(),
     }

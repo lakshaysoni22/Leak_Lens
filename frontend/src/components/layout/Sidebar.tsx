@@ -23,9 +23,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Users,
+  Settings,
+  ScrollText,
+  Server,
 } from 'lucide-react';
 import Logo from '@/components/shared/Logo';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
 
 export interface SidebarProps {
   isCollapsed: boolean;
@@ -35,6 +40,7 @@ export interface SidebarProps {
 
 interface NavSection {
   label: string;
+  adminOnly?: boolean;
   items: {
     label: string;
     to: string;
@@ -53,17 +59,17 @@ const navSections: NavSection[] = [
   {
     label: 'INTELLIGENCE',
     items: [
-      { label: 'Email Scanner', to: '/app/scan/email', icon: Mail },
-      { label: 'Username Scanner', to: '/app/scan/username', icon: User },
-      { label: 'Domain Scanner', to: '/app/scan/domain', icon: Globe },
-      { label: 'Phishing Detection', to: '/app/scan/phishing', icon: AlertTriangle },
+      { label: 'Email Scanner', to: '/app/email-scanner', icon: Mail },
+      { label: 'Username Scanner', to: '/app/username-scanner', icon: User },
+      { label: 'Domain Scanner', to: '/app/domain-scanner', icon: Globe },
+      { label: 'Phishing Detection', to: '/app/phishing', icon: AlertTriangle },
       { label: 'Threat Intelligence', to: '/app/threat-intel', icon: Shield },
     ],
   },
   {
     label: 'ANALYTICS',
     items: [
-      { label: 'Risk Analytics', to: '/app/analytics', icon: BarChart3 },
+      { label: 'Risk Analytics', to: '/app/risk-analytics', icon: BarChart3 },
       { label: 'Exposure History', to: '/app/history', icon: History },
       { label: 'Reports', to: '/app/reports', icon: FileText },
     ],
@@ -74,7 +80,7 @@ const navSections: NavSection[] = [
       { label: 'Monitoring', to: '/app/monitoring', icon: Activity },
       { label: 'Notifications', to: '/app/notifications', icon: Bell },
       { label: 'Integrations', to: '/app/integrations', icon: Plug },
-      { label: 'API Access', to: '/app/api-keys', icon: Code },
+      { label: 'API Access', to: '/app/api-access', icon: Code },
     ],
   },
   {
@@ -82,14 +88,28 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Profile', to: '/app/profile', icon: UserCircle },
       { label: 'Security', to: '/app/security', icon: Lock },
-      { label: 'Privacy Center', to: '/app/privacy-center', icon: Eye },
+      { label: 'Privacy Center', to: '/app/privacy', icon: Eye },
       { label: 'Subscription', to: '/app/subscription', icon: CreditCard },
       { label: 'Help', to: '/app/help', icon: HelpCircle },
+    ],
+  },
+  {
+    label: 'ADMINISTRATION',
+    adminOnly: true,
+    items: [
+      { label: 'Admin Dashboard', to: '/admin/dashboard', icon: Settings },
+      { label: 'User Management', to: '/admin/users', icon: Users },
+      { label: 'Audit Logs', to: '/admin/audit-logs', icon: ScrollText },
+      { label: 'System Health', to: '/admin/system-health', icon: Server },
     ],
   },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, className }) => {
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const visibleSections = navSections.filter((s) => !s.adminOnly || isAdmin);
+
   return (
     <aside
       className={cn(
@@ -112,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, classNa
 
       {/* Navigation Sections */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin">
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label} className="space-y-1">
             {!isCollapsed ? (
               <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#929BAD]/60 mb-1.5">
@@ -157,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, classNa
         {/* AI Assistant Special Feature Card */}
         <div className="pt-2">
           <NavLink
-            to="/app/assistant"
+            to="/app/ai-assistant"
             title={isCollapsed ? 'AI Security Assistant' : undefined}
             className={({ isActive }) =>
               cn(

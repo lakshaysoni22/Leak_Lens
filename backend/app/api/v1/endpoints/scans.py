@@ -12,6 +12,7 @@ from app.core.database import get_async_session
 from app.core.dependencies import get_current_user
 from app.core.security import hmac_hash
 from app.models.assessment import Assessment
+from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.assessment import EmailScanRequest, ScanResponse, UsernameScanRequest
 from app.utils.synthetic_data import SYNTHETIC_DATA_NOTICE, get_synthetic_email_result, get_synthetic_username_result
@@ -100,6 +101,19 @@ async def scan_email(
         is_demo=False,
     )
     db.add(assessment)
+
+    # Auto-create notification
+    notif = Notification(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        title="Email Scan Complete",
+        message=f"Email scan found {result['exposure_count']} exposure(s) — risk level: {result['risk_level'].upper()}",
+        notification_type="alert" if result["risk_level"] in ("high", "critical") else "info",
+        category="scan_result",
+        action_url="/app/exposure-history",
+    )
+    db.add(notif)
+
     await db.commit()
     await db.refresh(assessment)
 
@@ -151,6 +165,19 @@ async def scan_username(
         is_demo=False,
     )
     db.add(assessment)
+
+    # Auto-create notification
+    notif = Notification(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        title=f"Username Scan Complete",
+        message=f"Username scan found {result['exposure_count']} exposure(s) — risk level: {result['risk_level'].upper()}",
+        notification_type="alert" if result["risk_level"] in ("high", "critical") else "info",
+        category="scan_result",
+        action_url="/app/exposure-history",
+    )
+    db.add(notif)
+
     await db.commit()
     await db.refresh(assessment)
 

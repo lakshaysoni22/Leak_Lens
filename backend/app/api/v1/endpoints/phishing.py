@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 import unicodedata
 from datetime import datetime, timezone
 from typing import Any
@@ -12,6 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.core.dependencies import get_current_user
+from app.core.security import hmac_hash
+from app.models.assessment import Assessment
+from app.models.notification import Notification
 from app.models.user import User
 
 router = APIRouter()
@@ -153,6 +157,7 @@ def _analyse_url(raw_url: str) -> dict[str, Any]:
 async def analyze_phishing(
     payload: dict[str, str],
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     url = payload.get("url", "").strip()
     if not url:
@@ -170,9 +175,47 @@ async def analyze_phishing(
     else:
         recommendations.append("No significant phishing indicators detected, but always stay cautious")
 
+    # Persist to Assessment table
+    risk_score = analysis.get("risk_score", 0.0)
+    risk_level = analysis.get("risk_level", "low")
+    id_hash = hmac_hash(url)
+
+    assessment = Assessment(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        scan_type="phishing",
+        identifier_hash=id_hash,
+        identifier_hint=analysis.get("domain", url[:60]),
+        risk_score=float(risk_score),
+        risk_level=risk_level,
+        exposure_count=len(analysis.get("risk_factors", [])),
+        data_source="pattern_analysis",
+        summary=f"Phishing analysis — risk level: {risk_level.upper()} ({len(analysis.get('risk_factors', []))} indicator(s))",
+        recommendations=recommendations,
+        raw_result={**analysis, "recommendations": recommendations},
+        is_demo=False,
+    )
+    db.add(assessment)
+
+    # Auto-create notification
+    notif = Notification(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        title="Phishing Analysis Complete",
+        message=f"URL analysis for {analysis.get('domain', url[:40])} — risk level: {risk_level.upper()}",
+        notification_type="alert" if risk_level in ("high", "critical") else "info",
+        category="scan_result",
+        action_url="/app/exposure-history",
+    )
+    db.add(notif)
+
+    await db.commit()
+    await db.refresh(assessment)
+
     return {
+        "assessment_id": str(assessment.id),
         **analysis,
         "recommendations": recommendations,
         "data_notice": "This is a client-side pattern analysis only. It does not access the URL or external threat feeds.",
-        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "analyzed_at": assessment.created_at.isoformat(),
     }

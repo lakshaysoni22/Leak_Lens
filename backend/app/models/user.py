@@ -34,6 +34,10 @@ class User(Base):
     mfa_credentials: Mapped[list[MFACredential]] = relationship("MFACredential", back_populates="user", cascade="all, delete-orphan")
     recovery_codes: Mapped[list[RecoveryCode]] = relationship("RecoveryCode", back_populates="user", cascade="all, delete-orphan")
 
+    # Relationships referenced by other models via back_populates
+    notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    reports: Mapped[list["Report"]] = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+
     __table_args__ = (Index("ix_users_email_active", "email", "is_active"),)
 
 

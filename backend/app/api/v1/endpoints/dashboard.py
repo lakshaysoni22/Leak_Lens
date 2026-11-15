@@ -49,16 +49,31 @@ async def get_overview(
     )
     recent = recent_res.scalars().all()
 
-    # Trend data — daily counts for last 30 days
+    # Scan type breakdown (single query)
+    type_res = await db.execute(
+        select(Assessment.scan_type, func.count(Assessment.id))
+        .where(Assessment.user_id == uid)
+        .group_by(Assessment.scan_type)
+    )
+    type_counts: dict[str, int] = {row[0]: row[1] for row in type_res.fetchall()}
+
+    # Trend data — daily counts for last 30 days (single query)
+    thirty_days_ago = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=29)
+    trend_res = await db.execute(
+        select(
+            func.date(Assessment.created_at).label("day"),
+            func.count(Assessment.id).label("cnt"),
+        )
+        .where(Assessment.user_id == uid, Assessment.created_at >= thirty_days_ago)
+        .group_by(func.date(Assessment.created_at))
+    )
+    day_counts: dict[str, int] = {str(row[0]): row[1] for row in trend_res.fetchall()}
+
     trend: list[dict[str, Any]] = []
     for i in range(29, -1, -1):
-        day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
-        day_end = day_start + timedelta(days=1)
-        day_res = await db.execute(
-            select(func.count(Assessment.id))
-            .where(Assessment.user_id == uid, Assessment.created_at >= day_start, Assessment.created_at < day_end)
-        )
-        trend.append({"date": day_start.strftime("%m/%d"), "scans": day_res.scalar() or 0})
+        day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        day_key = day.strftime("%Y-%m-%d")
+        trend.append({"date": day.strftime("%m/%d"), "scans": day_counts.get(day_key, 0)})
 
     return {
         "user": {
@@ -82,6 +97,7 @@ async def get_overview(
             "critical": dist.get("critical", 0),
         },
         "trend": trend,
+        "scan_type_breakdown": type_counts,
         "recent_assessments": [
             {
                 "id": str(a.id),

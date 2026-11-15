@@ -53,7 +53,8 @@ async def update_profile(
     res = await db.execute(select(UserProfile).where(UserProfile.user_id == current_user.id))
     profile = res.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        profile = UserProfile(user_id=current_user.id)
+        db.add(profile)
 
     if data.full_name is not None:
         current_user.full_name = data.full_name

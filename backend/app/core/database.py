@@ -51,6 +51,7 @@ async def init_db() -> None:
     import app.models.organization  # noqa: F401
     import app.models.report  # noqa: F401
     import app.models.threat  # noqa: F401
+    import app.models.apikey  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

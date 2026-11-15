@@ -9,27 +9,27 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 import pyotp
 
 from app.core.config import settings
 
-# ── Password hashing (bcrypt via passlib) ────────────────────────────────────
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ── Password hashing (bcrypt direct — passlib has Python 3.14 compat issues) ─
 
 
 def hash_password(password: str) -> str:
     """Hash a password with bcrypt."""
-    return _pwd_ctx.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify a plain password against its bcrypt hash."""
-    return _pwd_ctx.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def password_needs_rehash(hashed: str) -> bool:
-    return _pwd_ctx.needs_update(hashed)
+    # bcrypt hashes with default rounds (12) are always current
+    return False
 
 
 # ── JWT tokens ───────────────────────────────────────────────────────────────
