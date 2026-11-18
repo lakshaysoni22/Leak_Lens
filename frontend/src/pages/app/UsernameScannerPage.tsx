@@ -574,17 +574,17 @@ const UsernameScannerPage: React.FC = () => {
                   </p>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 font-semibold text-[#A3FF6F]">
-                  {result.exposure_records.length} Records Found
+                  {(result.exposure_records ?? []).length} Records Found
                 </span>
               </div>
 
-              {result.exposure_records.length === 0 ? (
+              {(result.exposure_records ?? []).length === 0 ? (
                 <Card className="p-8 text-center text-[#929BAD]">
                   No direct breach leaks identified for this username.
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.exposure_records.map((record, idx) => (
+                  {(result.exposure_records ?? []).map((record, idx) => (
                     <motion.div
                       key={idx}
                       initial={{ opacity: 0, y: 10 }}
@@ -614,7 +614,7 @@ const UsernameScannerPage: React.FC = () => {
                           Compromised Attributes:
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {record.data_categories.map((cat, cIdx) => (
+                          {(record.data_categories ?? []).map((cat, cIdx) => (
                             <span
                               key={cIdx}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/10 text-xs text-white"
@@ -648,7 +648,7 @@ const UsernameScannerPage: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {result.risk_factors.map((factor, idx) => (
+                {(result.risk_factors ?? []).map((factor, idx) => (
                   <Card key={idx} className="p-5 border-white/10 bg-[#111827]/70 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-white">{factor.name}</span>
@@ -688,7 +688,7 @@ const UsernameScannerPage: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {result.recommendations.map((rec, idx) => (
+                {(result.recommendations ?? []).map((rec, idx) => (
                   <motion.div
                     key={idx}
                     initial={{ opacity: 0, x: -10 }}

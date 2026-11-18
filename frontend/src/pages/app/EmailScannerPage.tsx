@@ -520,7 +520,7 @@ const EmailScannerPage: React.FC = () => {
                     <div className="px-3.5 py-1.5 rounded-lg bg-surface/80 border border-white/10 text-xs">
                       <span className="text-[#929BAD]">Assessment ID: </span>
                       <span className="font-mono text-white">
-                        {result.assessment_id.slice(0, 16)}
+                        {(result.assessment_id ?? '').slice(0, 16)}
                       </span>
                     </div>
 
@@ -563,12 +563,12 @@ const EmailScannerPage: React.FC = () => {
                   </p>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 font-semibold text-[#A3FF6F]">
-                  {result.exposure_records.length} Records Found
+                  {(result.exposure_records ?? []).length} Records Found
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {result.exposure_records.map((record, idx) => (
+                {(result.exposure_records ?? []).map((record, idx) => (
                   <motion.div
                     key={idx}
                     initial={{ opacity: 0, y: 10 }}
@@ -599,7 +599,7 @@ const EmailScannerPage: React.FC = () => {
                         Compromised Data Attributes:
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {record.data_categories.map((cat, cIdx) => (
+                        {(record.data_categories ?? []).map((cat, cIdx) => (
                           <span
                             key={cIdx}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/10 text-xs text-white"
@@ -633,12 +633,12 @@ const EmailScannerPage: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {result.risk_factors.map((factor, idx) => (
+                {(result.risk_factors ?? []).map((factor, idx) => (
                   <Card key={idx} className="p-5 border-white/10 bg-[#111827]/70 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-white">{factor.name}</span>
                       <span className="text-xs font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[#A3FF6F]">
-                        Weight: {(factor.weight * 100).toFixed(0)}%
+                        Weight: {factor.weight <= 1 ? (factor.weight * 100).toFixed(0) : factor.weight}%
                       </span>
                     </div>
 
@@ -675,7 +675,7 @@ const EmailScannerPage: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                {result.recommendations.map((rec, idx) => (
+                {(result.recommendations ?? []).map((rec, idx) => (
                   <motion.div
                     key={idx}
                     initial={{ opacity: 0, x: -10 }}
