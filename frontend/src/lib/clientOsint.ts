@@ -1,27 +1,10 @@
 /**
  * Client-side OSINT scanner — queries free public APIs directly from the browser.
- * Used as fallback when backend is unavailable (e.g. Vercel frontend-only deploy).
+ * Returns data matching the exact ScanResult / PhishingResult / ThreatIntel types
+ * so the UI renders correctly without backend.
  */
 
-interface BreachInfo {
-  name: string;
-  domain: string;
-  date: string;
-  data_types: string[];
-}
-
-interface ClientScanResult {
-  identifier_hint: string;
-  risk_score: number;
-  risk_level: 'low' | 'medium' | 'high' | 'critical';
-  exposure_count: number;
-  data_source: 'live_intelligence';
-  summary: string;
-  breaches: BreachInfo[];
-  recommendations: string[];
-  created_at: string;
-  raw_result: Record<string, unknown>;
-}
+import type { ScanResult, ExposureRecord, RiskFactor, Recommendation } from '@/types';
 
 function computeRisk(breachCount: number): { score: number; level: 'low' | 'medium' | 'high' | 'critical' } {
   if (breachCount === 0) return { score: 0, level: 'low' };
@@ -30,12 +13,21 @@ function computeRisk(breachCount: number): { score: number; level: 'low' | 'medi
   return { score: 85, level: 'critical' };
 }
 
+function buildRecommendations(texts: string[]): Recommendation[] {
+  return texts.map((text, i) => ({
+    priority: i === 0 ? 'critical' : i <= 1 ? 'high' : 'medium',
+    action: text,
+    explanation: text,
+    category: 'security',
+  }));
+}
+
 /**
- * Scan email via XposedOrNot public API (no key required, CORS-friendly).
- * Endpoint: https://api.xposedornot.com/v1/check-email/{email}
+ * Scan email via XposedOrNot public API (CORS-friendly, no key required).
  */
-export async function scanEmailClient(email: string): Promise<ClientScanResult> {
-  const breaches: BreachInfo[] = [];
+export async function scanEmailClient(email: string): Promise<ScanResult> {
+  const exposureRecords: ExposureRecord[] = [];
+  const riskFactors: RiskFactor[] = [];
   let rawXposed: unknown = null;
 
   try {
@@ -47,32 +39,53 @@ export async function scanEmailClient(email: string): Promise<ClientScanResult> 
       const data = await res.json();
       rawXposed = data;
 
-      // XposedOrNot returns { breaches: [...] } when found
       const xBreaches = data?.breaches ?? data?.ExposedBreaches?.breaches_details ?? [];
       if (Array.isArray(xBreaches)) {
         for (const b of xBreaches) {
-          breaches.push({
-            name: b.breach ?? b.name ?? 'Unknown Breach',
-            domain: b.domain ?? b.xposed_domain ?? '',
-            date: b.xposed_date ?? b.date ?? '',
-            data_types: Array.isArray(b.xposed_data)
-              ? b.xposed_data
-              : typeof b.xposed_data === 'string'
-                ? b.xposed_data.split(',').map((s: string) => s.trim())
-                : [],
+          const dataTypes = Array.isArray(b.xposed_data)
+            ? b.xposed_data
+            : typeof b.xposed_data === 'string'
+              ? b.xposed_data.split(',').map((s: string) => s.trim())
+              : [];
+          exposureRecords.push({
+            source_name: b.breach ?? b.name ?? 'Unknown Breach',
+            source_date: b.xposed_date ?? b.date ?? null,
+            data_categories: dataTypes,
+            severity: dataTypes.some((d: string) => d.toLowerCase().includes('password')) ? 'critical' : 'medium',
+            is_verified: true,
+            data_source_type: 'breach_database',
           });
         }
       }
     }
-    // 404 = not found = clean
   } catch {
     // Network error — continue with what we have
   }
 
-  const { score, level } = computeRisk(breaches.length);
+  const { score, level } = computeRisk(exposureRecords.length);
   const hint = email.substring(0, 3) + '***@' + email.split('@')[1];
 
-  const recommendations: string[] = breaches.length > 0
+  if (exposureRecords.length > 0) {
+    riskFactors.push({
+      name: 'Breach Exposure Count',
+      weight: 40,
+      score: Math.min(100, exposureRecords.length * 20),
+      contribution: 40,
+      explanation: `Email found in ${exposureRecords.length} known breach database(s).`,
+    });
+    const hasPassword = exposureRecords.some(r => r.data_categories.some(d => d.toLowerCase().includes('password')));
+    if (hasPassword) {
+      riskFactors.push({
+        name: 'Password Exposure',
+        weight: 35,
+        score: 90,
+        contribution: 35,
+        explanation: 'Plaintext or hashed passwords were exposed in one or more breaches.',
+      });
+    }
+  }
+
+  const recTexts = exposureRecords.length > 0
     ? [
         'Change your password immediately on all affected services',
         'Enable two-factor authentication (2FA) on all accounts',
@@ -87,49 +100,41 @@ export async function scanEmailClient(email: string): Promise<ClientScanResult> 
       ];
 
   return {
+    assessment_id: `client-${Date.now()}`,
+    scan_type: 'email',
     identifier_hint: hint,
     risk_score: score,
     risk_level: level,
-    exposure_count: breaches.length,
+    exposure_count: exposureRecords.length,
     data_source: 'live_intelligence',
-    summary: breaches.length > 0
-      ? `Found ${breaches.length} data breach exposure${breaches.length > 1 ? 's' : ''} associated with this email address.`
+    data_notice: 'Queried via XposedOrNot public API (client-side)',
+    summary: exposureRecords.length > 0
+      ? `Found ${exposureRecords.length} data breach exposure${exposureRecords.length > 1 ? 's' : ''} associated with this email address.`
       : 'No breaches detected. This email was not found in any known data breach databases.',
-    breaches,
-    recommendations,
+    exposure_records: exposureRecords,
+    risk_factors: riskFactors,
+    recommendations: buildRecommendations(recTexts),
+    is_demo: false,
     created_at: new Date().toISOString(),
-    raw_result: {
-      xposedornot: rawXposed,
-      providers_queried: ['XposedOrNot'],
-      scan_timestamp: new Date().toISOString(),
-    },
   };
 }
 
-
 /**
- * Scan username — check platform existence via public endpoints.
+ * Scan username — check platform existence + XposedOrNot.
  */
-export async function scanUsernameClient(username: string): Promise<ClientScanResult> {
-  const platforms = [
-    { name: 'GitHub', url: `https://api.github.com/users/${encodeURIComponent(username)}` },
-  ];
+export async function scanUsernameClient(username: string): Promise<ScanResult> {
+  const exposureRecords: ExposureRecord[] = [];
+  const platformMentions: string[] = [];
 
-  const found: string[] = [];
-  const notFound: string[] = [];
+  // Check GitHub
+  try {
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) platformMentions.push('GitHub');
+  } catch { /* ignore */ }
 
-  for (const p of platforms) {
-    try {
-      const res = await fetch(p.url, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) found.push(p.name);
-      else notFound.push(p.name);
-    } catch {
-      notFound.push(p.name);
-    }
-  }
-
-  // Also check XposedOrNot for the username
-  let breachCount = 0;
+  // Check XposedOrNot for breaches
   try {
     const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(username)}`, {
       signal: AbortSignal.timeout(10000),
@@ -137,32 +142,50 @@ export async function scanUsernameClient(username: string): Promise<ClientScanRe
     if (res.ok) {
       const data = await res.json();
       const xBreaches = data?.breaches ?? data?.ExposedBreaches?.breaches_details ?? [];
-      if (Array.isArray(xBreaches)) breachCount = xBreaches.length;
+      if (Array.isArray(xBreaches)) {
+        for (const b of xBreaches) {
+          exposureRecords.push({
+            source_name: b.breach ?? b.name ?? 'Unknown',
+            source_date: b.xposed_date ?? null,
+            data_categories: Array.isArray(b.xposed_data) ? b.xposed_data : [],
+            severity: 'medium',
+            is_verified: true,
+            data_source_type: 'breach_database',
+          });
+        }
+      }
     }
   } catch { /* ignore */ }
 
-  const { score, level } = computeRisk(breachCount);
+  const { score, level } = computeRisk(exposureRecords.length);
+
+  const recTexts = exposureRecords.length > 0
+    ? ['Change passwords on accounts using this username', 'Enable 2FA on all accounts', 'Avoid reusing this username on sensitive platforms']
+    : ['Continue monitoring for new exposures', 'Use unique usernames for sensitive accounts'];
 
   return {
+    assessment_id: `client-${Date.now()}`,
+    scan_type: 'username',
     identifier_hint: username,
     risk_score: score,
     risk_level: level,
-    exposure_count: breachCount,
+    exposure_count: exposureRecords.length,
     data_source: 'live_intelligence',
-    summary: found.length > 0
-      ? `Username "${username}" found on ${found.join(', ')}. ${breachCount > 0 ? `${breachCount} breach exposures detected.` : 'No breach exposures detected.'}`
-      : `Username "${username}" not found on checked platforms. ${breachCount > 0 ? `${breachCount} breach exposures detected.` : 'No breach exposures detected.'}`,
-    breaches: [],
-    recommendations: breachCount > 0
-      ? ['Change passwords on accounts using this username', 'Enable 2FA on all accounts', 'Avoid reusing this username on sensitive platforms']
-      : ['Continue monitoring for new exposures', 'Use unique usernames for sensitive accounts'],
+    data_notice: 'Queried via public APIs (client-side)',
+    summary: platformMentions.length > 0
+      ? `Username found on ${platformMentions.join(', ')}. ${exposureRecords.length > 0 ? `${exposureRecords.length} breach exposures detected.` : 'No breach exposures detected.'}`
+      : `${exposureRecords.length > 0 ? `${exposureRecords.length} breach exposures detected.` : 'No breach exposures detected.'}`,
+    exposure_records: exposureRecords,
+    risk_factors: exposureRecords.length > 0 ? [{ name: 'Breach Exposure', weight: 50, score: score, contribution: 50, explanation: `Found in ${exposureRecords.length} breach(es)` }] : [],
+    recommendations: buildRecommendations(recTexts),
+    is_demo: false,
     created_at: new Date().toISOString(),
-    raw_result: { platforms_found: found, platforms_not_found: notFound, breach_count: breachCount },
+    platform_mentions: platformMentions,
   };
 }
 
 /**
- * Analyze URL for phishing indicators — client-side heuristics.
+ * Analyze URL for phishing indicators — client-side heuristics + URLhaus.
  */
 export async function analyzePhishingClient(url: string): Promise<Record<string, unknown>> {
   const indicators: string[] = [];
@@ -172,27 +195,23 @@ export async function analyzePhishingClient(url: string): Promise<Record<string,
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();
 
-    // Check for IP address instead of domain
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
       indicators.push('URL uses IP address instead of domain name');
       riskScore += 30;
     }
 
-    // Check for suspicious TLDs
     const suspiciousTlds = ['.tk', '.ml', '.ga', '.cf', '.gq', '.xyz', '.top', '.buzz', '.club'];
     if (suspiciousTlds.some(tld => host.endsWith(tld))) {
       indicators.push(`Suspicious TLD detected: .${host.split('.').pop()}`);
       riskScore += 20;
     }
 
-    // Check for excessive subdomains
     const parts = host.split('.');
     if (parts.length > 4) {
       indicators.push(`Excessive subdomains (${parts.length} levels)`);
       riskScore += 15;
     }
 
-    // Check for brand impersonation (homoglyphs)
     const brands = ['paypal', 'google', 'apple', 'microsoft', 'amazon', 'facebook', 'netflix', 'instagram', 'twitter'];
     for (const brand of brands) {
       if (host.includes(brand) && !host.endsWith(`${brand}.com`) && !host.endsWith(`${brand}.net`)) {
@@ -202,31 +221,27 @@ export async function analyzePhishingClient(url: string): Promise<Record<string,
       }
     }
 
-    // Check for @ in URL (credential phishing)
     if (url.includes('@')) {
       indicators.push('URL contains @ symbol (potential credential harvesting)');
       riskScore += 25;
     }
 
-    // Check for excessive path length
     if (parsed.pathname.length > 100) {
       indicators.push('Unusually long URL path');
       riskScore += 10;
     }
 
-    // Check HTTPS
     if (parsed.protocol !== 'https:') {
       indicators.push('Not using HTTPS encryption');
       riskScore += 15;
     }
 
-    // Check for numeric patterns in domain
     if (/\d{4,}/.test(host)) {
       indicators.push('Domain contains long numeric sequence');
       riskScore += 10;
     }
 
-    // Check URLhaus for known malicious URL
+    // URLhaus check
     try {
       const formData = new URLSearchParams();
       formData.append('url', url);
@@ -243,7 +258,6 @@ export async function analyzePhishingClient(url: string): Promise<Record<string,
         }
       }
     } catch { /* ignore */ }
-
   } catch {
     indicators.push('Invalid URL format');
     riskScore = 50;
@@ -257,8 +271,13 @@ export async function analyzePhishingClient(url: string): Promise<Record<string,
     risk_score: riskScore,
     risk_level: level,
     is_phishing: riskScore >= 50,
-    indicators,
+    phishing_score: riskScore,
+    indicators: indicators.map(text => ({ indicator: text, severity: riskScore >= 50 ? 'high' : 'medium' })),
+    ssl_info: { valid: url.startsWith('https'), protocol: url.startsWith('https') ? 'TLS' : 'None' },
+    domain_age: null,
+    redirect_chain: [url],
     data_source: 'live_intelligence',
+    data_notice: 'Client-side heuristic analysis + URLhaus',
     summary: indicators.length > 0
       ? `${indicators.length} phishing indicator${indicators.length > 1 ? 's' : ''} detected.`
       : 'No phishing indicators detected. URL appears safe.',
@@ -277,11 +296,10 @@ export async function lookupThreatClient(iocType: string, value: string): Promis
   let riskScore = 0;
   const indicators: string[] = [];
 
-  // URLhaus check (works for URLs, domains, IPs)
+  // URLhaus check
   try {
     const formData = new URLSearchParams();
     if (iocType === 'url') formData.append('url', value);
-    else if (iocType === 'domain' || iocType === 'host') formData.append('host', value);
     else formData.append('host', value);
 
     const uhRes = await fetch('https://urlhaus-api.abuse.ch/v1/host/', {
@@ -320,14 +338,15 @@ export async function lookupThreatClient(iocType: string, value: string): Promis
   return {
     ioc_type: iocType,
     ioc_value: value,
-    risk_score: riskScore,
-    risk_level: level,
+    risk_score: { score: riskScore, level, label: level.charAt(0).toUpperCase() + level.slice(1) },
     indicators,
-    providers,
+    provider_results: providers,
+    provider_status: providers,
     data_source: 'live_intelligence',
+    data_notice: 'Client-side OSINT lookup',
     summary: indicators.length > 0
-      ? `${indicators.length} threat indicator${indicators.length > 1 ? 's' : ''} found for this ${iocType}.`
-      : `No threats detected for this ${iocType} in queried databases.`,
+      ? `${indicators.length} threat indicator${indicators.length > 1 ? 's' : ''} found.`
+      : `No threats detected for this ${iocType}.`,
     created_at: new Date().toISOString(),
   };
 }
