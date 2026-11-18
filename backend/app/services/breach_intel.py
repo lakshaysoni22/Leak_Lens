@@ -20,7 +20,7 @@ from app.services.risk_engine import compute_risk, classify_risk
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Recommendation catalogue (mirrors synthetic_data.py format)
+# Recommendation catalogue for live intelligence results
 # ---------------------------------------------------------------------------
 _RECOMMENDATIONS: dict[str, list[dict[str, str]]] = {
     "critical": [

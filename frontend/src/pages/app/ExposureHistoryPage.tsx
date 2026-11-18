@@ -32,97 +32,6 @@ interface AssessmentDetail {
   created_at: string
 }
 
-const fallbackHistory: AssessmentListItem[] = [
-  {
-    id: 'scan-01',
-    scan_type: 'email',
-    identifier_hint: 'lakshaysoni@gmail.com',
-    risk_score: 78,
-    risk_level: 'high',
-    exposure_count: 3,
-    data_source: 'synthetic',
-    summary: 'Found 3 data breach exposures associated with credential leaks from 2021-2024.',
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: 'scan-02',
-    scan_type: 'domain',
-    identifier_hint: 'auth-gateway.io',
-    risk_score: 62,
-    risk_level: 'high',
-    exposure_count: 1,
-    data_source: 'synthetic',
-    summary: 'Missing DMARC enforcement and weak SPF record detected.',
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: 'scan-03',
-    scan_type: 'username',
-    identifier_hint: 'lakshaysoni22',
-    risk_score: 25,
-    risk_level: 'low',
-    exposure_count: 0,
-    data_source: 'synthetic',
-    summary: 'Username tracked across 8 developer platforms. Zero compromised passwords detected.',
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-  {
-    id: 'scan-04',
-    scan_type: 'phishing',
-    identifier_hint: 'https://paypa1-security-verify.net',
-    risk_score: 95,
-    risk_level: 'critical',
-    exposure_count: 5,
-    data_source: 'synthetic',
-    summary: 'Known homoglyph domain impersonating PayPal login infrastructure.',
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: 'scan-05',
-    scan_type: 'email',
-    identifier_hint: 'security-team@enterprise.corp',
-    risk_score: 45,
-    risk_level: 'medium',
-    exposure_count: 2,
-    data_source: 'synthetic',
-    summary: '2 historical marketing vendor leaks detected. No active password hashes.',
-    created_at: new Date(Date.now() - 3600000 * 36).toISOString(),
-  },
-  {
-    id: 'scan-06',
-    scan_type: 'domain',
-    identifier_hint: 'api.defense-ops.com',
-    risk_score: 18,
-    risk_level: 'low',
-    exposure_count: 0,
-    data_source: 'synthetic',
-    summary: 'TLS 1.3 enforced, HSTS preload enabled, strict CSP headers active.',
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-  },
-  {
-    id: 'scan-07',
-    scan_type: 'phishing',
-    identifier_hint: 'https://secure-login-microsofft.com',
-    risk_score: 88,
-    risk_level: 'critical',
-    exposure_count: 4,
-    data_source: 'synthetic',
-    summary: 'Typosquatting domain targeting Microsoft 365 enterprise SSO users.',
-    created_at: new Date(Date.now() - 3600000 * 60).toISOString(),
-  },
-  {
-    id: 'scan-08',
-    scan_type: 'username',
-    identifier_hint: 'admin_root',
-    risk_score: 85,
-    risk_level: 'critical',
-    exposure_count: 12,
-    data_source: 'synthetic',
-    summary: 'High-value default username detected in multiple dark web brute-force combo lists.',
-    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-  },
-];
-
 export default function ExposureHistoryPage() {
   const [items, setItems] = useState<AssessmentListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -133,30 +42,26 @@ export default function ExposureHistoryPage() {
   const [selectedItem, setSelectedItem] = useState<AssessmentDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
 
   const fetchHistory = async (p: number, type: string) => {
     setLoading(true)
+    setFetchError(false)
     try {
       const params: Record<string, unknown> = { page: p, per_page: 15 }
       if (type !== 'all') params.scan_type = type
       const res = await api.get('/scans/history', { params })
       const data = res.data
       const list = data.items ?? data ?? []
-      if (Array.isArray(list) && list.length > 0) {
-        setItems(list)
-        setTotalPages(data.total_pages ?? 1)
-        setTotal(data.total ?? list.length)
-      } else {
-        const filtered = type === 'all' ? fallbackHistory : fallbackHistory.filter(i => i.scan_type === type)
-        setItems(filtered)
-        setTotalPages(1)
-        setTotal(filtered.length)
-      }
+      setItems(Array.isArray(list) ? list : [])
+      setTotalPages(data.total_pages ?? 1)
+      setTotal(data.total ?? (Array.isArray(list) ? list.length : 0))
     } catch {
-      const filtered = type === 'all' ? fallbackHistory : fallbackHistory.filter(i => i.scan_type === type)
-      setItems(filtered)
+      toast.error('Failed to load exposure history')
+      setFetchError(true)
+      setItems([])
       setTotalPages(1)
-      setTotal(filtered.length)
+      setTotal(0)
     }
     setLoading(false)
   }
@@ -170,7 +75,8 @@ export default function ExposureHistoryPage() {
       const res = await api.get(`/scans/${item.id}`)
       setSelectedItem(res.data)
     } catch {
-      // Fallback detail representation from the clicked item
+      // Show error — use available list data for detail panel
+      toast.error('Could not load full scan details')
       setSelectedItem({
         id: item.id,
         scan_type: item.scan_type,
@@ -179,25 +85,13 @@ export default function ExposureHistoryPage() {
         risk_level: item.risk_level,
         exposure_count: item.exposure_count,
         data_source: item.data_source,
-        data_notice: 'Synthetic cybersecurity intelligence dataset',
+        data_notice: 'Detail fetch failed — showing summary from scan history',
         summary: item.summary,
         recommendations: [
-          'Rotate credentials across all affected accounts immediately',
-          'Enable FIDO2 / WebAuthn hardware-based multi-factor authentication',
-          'Audit domain DNS and enforce strict DMARC, DKIM, and SPF protocols',
-          'Monitor dark web paste sites for recurring identifier disclosures',
+          'Run a fresh scan for updated intelligence',
+          'Check your network connection and try again',
         ],
-        raw_result: {
-          target: item.identifier_hint,
-          scan_type: item.scan_type,
-          timestamp: item.created_at,
-          threat_indicators: {
-            breach_database_matches: item.exposure_count,
-            severity_index: item.risk_score,
-            threat_actor_attribution: 'Global OSINT / Threat intel repository match',
-          },
-          status: 'verified',
-        },
+        raw_result: { target: item.identifier_hint, scan_type: item.scan_type, timestamp: item.created_at },
         created_at: item.created_at,
       })
     } finally {
@@ -228,6 +122,15 @@ export default function ExposureHistoryPage() {
 
         {loading ? (
           <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} variant="rect" height={64} />)}</div>
+        ) : fetchError ? (
+          <Card variant="default" padding="lg">
+            <CardContent className="text-center py-12">
+              <AlertTriangle className="mx-auto mb-4 text-amber-400" size={48} />
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Failed to Load History</h3>
+              <p className="text-text-secondary mb-4">Could not connect to the server. Check your connection and try again.</p>
+              <Button onClick={() => fetchHistory(page, scanType)} variant="primary" size="sm">Retry</Button>
+            </CardContent>
+          </Card>
         ) : items.length === 0 ? (
           <EmptyState icon={History} title="No scan history" description="Your assessment history will appear here after running scans." actionLabel="Run First Scan" onAction={() => window.location.href = '/app/email-scanner'} />
         ) : (

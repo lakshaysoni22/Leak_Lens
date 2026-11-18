@@ -358,18 +358,17 @@ async def run_monitoring_job(
     if not job:
         raise HTTPException(status_code=404, detail="Monitoring job not found")
 
-    # Run the actual scan based on job type
-    from app.utils.synthetic_data import get_synthetic_email_result, get_synthetic_username_result
+    # Run the actual scan based on job type using real intelligence
+    from app.services.breach_intel import BreachIntelligenceService
+    intel = BreachIntelligenceService()
 
     scan_result: dict[str, Any] = {}
     if job.job_type == "email":
-        id_hash = hmac_hash(job.target)
-        scan_result = get_synthetic_email_result(id_hash, job.target)
+        scan_result = await intel.scan_email(job.target)
     elif job.job_type == "username":
-        id_hash = hmac_hash(job.target)
-        scan_result = get_synthetic_username_result(id_hash, job.target)
+        scan_result = await intel.scan_username(job.target)
     elif job.job_type == "domain":
-        scan_result = {"status": "scanned", "note": "Domain scan triggered"}
+        scan_result = {"status": "scanned", "note": "Domain monitoring scan triggered", "risk_score": 0.0, "risk_level": "low", "exposure_count": 0}
 
     # Save scan as assessment
     assessment = Assessment(

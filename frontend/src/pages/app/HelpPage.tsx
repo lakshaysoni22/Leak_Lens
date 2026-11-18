@@ -16,7 +16,7 @@ const quickLinks = [
 const faqs = [
   { q: 'How do I run my first scan?', a: 'Navigate to the Email Scanner page from the sidebar, enter an email address, and click "Scan". The system will analyze the email for potential data exposures and provide a detailed risk assessment.' },
   { q: 'Is my data stored securely?', a: 'Yes. All data is encrypted in transit (TLS 1.3) and at rest (AES-256). We use zero-knowledge principles where possible, and scan queries are hashed before storage.' },
-  { q: 'What does "Synthetic Data" mean?', a: 'Synthetic data results are generated for demonstration purposes and do not represent actual data breaches. They help you understand how LeakLens works without accessing real breach databases.' },
+  { q: 'What data sources does LeakLens use?', a: 'LeakLens queries multiple live OSINT intelligence providers including breach databases, threat intelligence feeds, DNS records, SSL certificates, and dark web monitoring sources to provide real-time security assessments.' },
   { q: 'How do I enable Two-Factor Authentication?', a: 'Go to Security Settings from the sidebar, find the Two-Factor Authentication section, and click "Enable 2FA". You\'ll need an authenticator app like Google Authenticator or Authy.' },
   { q: 'Can I upgrade or downgrade my plan?', a: 'Yes, you can change your plan at any time from the Subscription page. Upgrades take effect immediately, and downgrades take effect at the end of your current billing period.' },
 ]

@@ -15,74 +15,25 @@ import api from '@/lib/api'
 import { formatDate, formatScore } from '@/lib/utils'
 import type { AssessmentListItem, RiskLevel } from '@/types'
 
-const fallbackReports: AssessmentListItem[] = [
-  {
-    id: 'report-01',
-    scan_type: 'email',
-    identifier_hint: 'lakshaysoni@gmail.com',
-    risk_score: 78,
-    risk_level: 'high',
-    exposure_count: 3,
-    data_source: 'synthetic',
-    summary: 'Email exposed in 3 verified cyber leaks. Remediation advised.',
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    id: 'report-02',
-    scan_type: 'domain',
-    identifier_hint: 'auth-gateway.io',
-    risk_score: 62,
-    risk_level: 'high',
-    exposure_count: 1,
-    data_source: 'synthetic',
-    summary: 'DNS security audit flagged missing SPF and DMARC enforcement.',
-    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: 'report-03',
-    scan_type: 'phishing',
-    identifier_hint: 'https://paypa1-security-verify.net',
-    risk_score: 95,
-    risk_level: 'critical',
-    exposure_count: 5,
-    data_source: 'synthetic',
-    summary: 'Critical phishing homoglyph domain detected impersonating financial portal.',
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: 'report-04',
-    scan_type: 'username',
-    identifier_hint: 'admin_root',
-    risk_score: 85,
-    risk_level: 'critical',
-    exposure_count: 12,
-    data_source: 'synthetic',
-    summary: 'Default username associated with credential stuffing database leaks.',
-    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-  },
-];
-
 export default function ReportsPage() {
   const [items, setItems] = useState<AssessmentListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [scanType, setScanType] = useState('all')
+  const [fetchError, setFetchError] = useState(false)
 
   const fetchReports = async (type: string) => {
     setLoading(true)
+    setFetchError(false)
     try {
       const params: Record<string, unknown> = { page: 1, per_page: 100 }
       if (type !== 'all') params.scan_type = type
       const res = await api.get('/scans/history', { params })
       const list = res.data?.items ?? res.data ?? []
-      if (Array.isArray(list) && list.length > 0) {
-        setItems(list)
-      } else {
-        const filtered = type === 'all' ? fallbackReports : fallbackReports.filter(i => i.scan_type === type)
-        setItems(filtered)
-      }
+      setItems(Array.isArray(list) ? list : [])
     } catch {
-      const filtered = type === 'all' ? fallbackReports : fallbackReports.filter(i => i.scan_type === type)
-      setItems(filtered)
+      toast.error('Failed to load reports')
+      setFetchError(true)
+      setItems([])
     }
     setLoading(false)
   }
@@ -126,7 +77,7 @@ export default function ReportsPage() {
       String(item.risk_score),
       item.risk_level,
       String(item.exposure_count ?? 0),
-      item.data_source ?? 'synthetic',
+      item.data_source ?? 'live_intelligence',
       (item.summary ?? '').replace(/,/g, ';').replace(/\n/g, ' '),
     ])
     const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n')
@@ -185,6 +136,15 @@ export default function ReportsPage() {
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} variant="card" height={140} />)}</div>
+        ) : fetchError ? (
+          <Card variant="default" padding="lg">
+            <div className="text-center py-12">
+              <FileText className="mx-auto mb-4 text-amber-400" size={48} />
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Failed to Load Reports</h3>
+              <p className="text-text-secondary mb-4">Could not connect to the server.</p>
+              <Button onClick={() => fetchReports(scanType)} variant="primary" size="sm">Retry</Button>
+            </div>
+          </Card>
         ) : items.length === 0 ? (
           <EmptyState icon={FileText} title="No reports yet" description="Reports are generated from your scan results. Run a scan first." actionLabel="Run a Scan" onAction={() => window.location.href = '/app/email-scanner'} />
         ) : (

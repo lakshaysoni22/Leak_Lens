@@ -68,95 +68,26 @@ const DashboardPage: React.FC = () => {
       const response = await api.get<DashboardOverview>('/dashboard/overview');
       setOverview(response.data);
     } catch (err: any) {
-      console.warn('Using fallback data for dashboard preview', err);
-      // Fallback for seamless visual experience when backend synthetic endpoint is initializing
+      toast.error('Could not load dashboard data');
+      // Show empty dashboard — no fake data
       setOverview({
         user: {
           full_name: user?.full_name || 'Security Operator',
-          email: user?.email || 'operator@leaklens.io',
+          email: user?.email || '',
           role: user?.role || 'user',
           is_verified: true,
         },
         stats: {
-          total_assessments: 42,
-          this_week: 14,
-          high_risk: 5,
-          critical_risk: 2,
-          monitored_identifiers: 8,
-          active_alerts: 3,
+          total_assessments: 0,
+          this_week: 0,
+          high_risk: 0,
+          critical_risk: 0,
+          monitored_identifiers: 0,
+          active_alerts: 0,
         },
-        risk_distribution: {
-          low: 24,
-          medium: 11,
-          high: 5,
-          critical: 2,
-        },
-        trend: [
-          { date: '2026-11-09', scans: 3 },
-          { date: '2026-11-10', scans: 6 },
-          { date: '2026-11-11', scans: 4 },
-          { date: '2026-11-12', scans: 9 },
-          { date: '2026-11-13', scans: 12 },
-          { date: '2026-11-14', scans: 8 },
-          { date: '2026-11-15', scans: 14 },
-        ],
-        recent_assessments: [
-          {
-            id: 'scan-01',
-            scan_type: 'email',
-            identifier_hint: 'admin***@corp.org',
-            risk_score: 84.5,
-            risk_level: 'critical',
-            exposure_count: 4,
-            data_source: 'synthetic',
-            summary: 'Multiple plaintext passwords and API keys leaked across 4 separate breach dumps.',
-            created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-          },
-          {
-            id: 'scan-02',
-            scan_type: 'domain',
-            identifier_hint: 'auth-gateway.io',
-            risk_score: 62.0,
-            risk_level: 'high',
-            exposure_count: 2,
-            data_source: 'live_intelligence',
-            summary: 'TLS certificate nearing expiration and 2 missing CSP security headers detected.',
-            created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
-          },
-          {
-            id: 'scan-03',
-            scan_type: 'username',
-            identifier_hint: 'root_dev_99',
-            risk_score: 35.0,
-            risk_level: 'medium',
-            exposure_count: 1,
-            data_source: 'synthetic',
-            summary: 'Forum handle identified with linked pastebin code snippet leak.',
-            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-          },
-          {
-            id: 'scan-04',
-            scan_type: 'url',
-            identifier_hint: 'https://verify-banking-portal.net',
-            risk_score: 92.0,
-            risk_level: 'critical',
-            exposure_count: 1,
-            data_source: 'live_intelligence',
-            summary: 'High-confidence typosquatting phishing campaign targeting financial credentials.',
-            created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-          },
-          {
-            id: 'scan-05',
-            scan_type: 'email',
-            identifier_hint: 'dev***@leaklens.io',
-            risk_score: 12.0,
-            risk_level: 'low',
-            exposure_count: 0,
-            data_source: 'synthetic',
-            summary: 'Clean reconnaissance. No breach records or paste exposures identified.',
-            created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-          },
-        ],
+        risk_distribution: { low: 0, medium: 0, high: 0, critical: 0 },
+        trend: [],
+        recent_assessments: [],
       });
     } finally {
       setLoading(false);
