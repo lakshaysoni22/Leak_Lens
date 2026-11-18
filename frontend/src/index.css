@@ -534,3 +534,85 @@ html[data-theme="light"] div[role="status"] {
   color: #0F172A !important;
   border-color: rgba(0,0,0,0.08) !important;
 }
+
+
+/* ============================================================
+   EXTREME PERFORMANCE LAYER
+   ============================================================ */
+
+/* GPU-accelerated transforms — force compositor layer for animated elements */
+@layer utilities {
+  .gpu-accelerate {
+    transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+}
+
+/* Optimize scrolling performance */
+main, [class*="overflow-y-auto"], [class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  contain: layout style;
+}
+
+/* Content-visibility for off-screen elements (auto-skip rendering) */
+.card, [class*="Card"], [class*="card"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+/* Optimize sidebar — always on GPU layer, no repaints */
+aside {
+  will-change: width;
+  contain: layout style;
+  transform: translateZ(0);
+}
+
+/* Optimize page transitions — GPU layer */
+[class*="motion"] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Faster hover transitions globally */
+a, button, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Image rendering optimization */
+img, svg {
+  content-visibility: auto;
+}
+
+/* Reduce paint for large lists */
+.space-y-2 > *, .space-y-3 > *, .space-y-4 > * {
+  contain: layout style paint;
+}
+
+/* Font display optimization — prevent FOIT */
+@font-face {
+  font-family: 'Inter';
+  font-display: swap;
+}
+
+/* Preconnect hints for API calls (browser will establish early connections) */
+/* These are handled via <link rel="preconnect"> in index.html */
+
+/* Optimize animations for 60fps — use only transform and opacity */
+.glass-hover:hover,
+.stat-card:hover,
+.btn-primary:hover {
+  will-change: transform, box-shadow;
+}
+
+/* Disable animations when battery saver / data saver is on */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

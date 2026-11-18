@@ -4,7 +4,32 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>LeakLens — Cybersecurity Intelligence Platform</title>
+    <meta name="description" content="Real-time breach intelligence, domain security, phishing detection, and threat analysis platform." />
+
+    <!-- DNS Prefetch & Preconnect for faster API calls -->
+    <link rel="dns-prefetch" href="//urlhaus-api.abuse.ch" />
+    <link rel="dns-prefetch" href="//otx.alienvault.com" />
+    <link rel="dns-prefetch" href="//ipinfo.io" />
+    <link rel="dns-prefetch" href="//ip-api.com" />
+    <link rel="dns-prefetch" href="//emailrep.io" />
+    <link rel="dns-prefetch" href="//api.xposedornot.com" />
+
+    <!-- Preconnect to own API backend -->
+    <link rel="preconnect" href="/" />
+
+    <!-- Preload critical font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Theme color for browser chrome -->
+    <meta name="theme-color" content="#080B12" />
+
+    <!-- Inline critical CSS to prevent FOUC -->
+    <style>
+      body { background: #080B12; margin: 0; }
+      #root { min-height: 100dvh; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
