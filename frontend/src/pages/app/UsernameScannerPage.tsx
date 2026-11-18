@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 
 import api from '@/lib/api';
+import { scanUsernameClient } from '@/lib/clientOsint';
 import type { ScanResult, RiskLevel } from '@/types';
 import { formatDate, formatScore } from '@/lib/utils';
 import Button from '@/components/ui/Button';
@@ -219,10 +220,13 @@ const UsernameScannerPage: React.FC = () => {
     setCurrentStageIndex(0);
     setResult(null);
 
-    // Real API call — NO fallback to fake data
+    // Real API call — try backend first, fallback to client-side OSINT
     const apiPromise = api
       .post<ScanResult>('/scans/username', { username })
-      .then((res) => res.data);
+      .then((res) => res.data)
+      .catch(async () => {
+        return await scanUsernameClient(username) as unknown as ScanResult;
+      });
 
     // Sequential stage ticker animation
     stageTimersRef.current.forEach(clearTimeout);

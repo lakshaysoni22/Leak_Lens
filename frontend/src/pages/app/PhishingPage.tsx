@@ -24,6 +24,7 @@ import {
 import toast from 'react-hot-toast';
 
 import api from '@/lib/api';
+import { analyzePhishingClient } from '@/lib/clientOsint';
 import type { PhishingResult, RiskLevel } from '@/types';
 import { formatDate, formatScore } from '@/lib/utils';
 import Button from '@/components/ui/Button';
@@ -217,12 +218,14 @@ const PhishingPage: React.FC = () => {
     try {
       const response = await api.post<PhishingResult>('/phishing/analyze', { url: cleanUrl });
       setResult(response.data);
-    } catch (err: any) {
-      const errorMsg =
-        err?.response?.data?.detail ||
-        'Phishing analysis service temporarily unavailable. Please try again.';
-      toast.error(errorMsg);
-      // NO fake/synthetic fallback — return to input state
+    } catch {
+      // Backend unavailable — use client-side analysis
+      try {
+        const clientResult = await analyzePhishingClient(cleanUrl);
+        setResult(clientResult as unknown as PhishingResult);
+      } catch (err2: any) {
+        toast.error('Phishing analysis failed. Please try again.');
+      }
     } finally {
       setIsAnalyzing(false);
     }

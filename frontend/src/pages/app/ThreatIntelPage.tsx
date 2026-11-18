@@ -16,6 +16,7 @@ import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
 import EmptyState from '@/components/ui/EmptyState'
 import api from '@/lib/api'
+import { lookupThreatClient } from '@/lib/clientOsint'
 
 /* ───────────────────────── Types ───────────────────────── */
 interface ProviderInfo {
@@ -703,8 +704,16 @@ export default function ThreatIntelPage() {
         toast.success('Intelligence lookup complete')
       }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Intelligence lookup failed — all providers unreachable'
-      toast.error(msg)
+      // Backend unavailable — use client-side OSINT
+      try {
+        const clientResult = await lookupThreatClient(iocType, iocValue.trim())
+        setResult(clientResult)
+        if (clientResult?.data_source) setDataSource(clientResult.data_source as string)
+        toast.success('Intelligence lookup complete (client-side)')
+      } catch {
+        const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Intelligence lookup failed — all providers unreachable'
+        toast.error(msg)
+      }
     } finally {
       setLoading(false)
     }

@@ -147,7 +147,7 @@ export const HomePage: React.FC = () => {
       {/* Global Navigation */}
       <Navbar />
 
-      <main className="relative overflow-hidden pt-20">
+      <main className="relative overflow-x-hidden pt-20">
         {/* ========================================================
             1. HERO SECTION
             ======================================================== */}
