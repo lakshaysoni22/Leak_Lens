@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileNav from './MobileNav';
+
+// Memoize TopBar and MobileNav to prevent re-renders on route change
+const MemoTopBar = memo(TopBar);
+const MemoMobileNav = memo(MobileNav);
 
 export const AppLayout: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -36,7 +40,7 @@ export const AppLayout: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Sticky TopBar */}
-        <TopBar />
+        <MemoTopBar />
 
         {/* Scrollable Page Body */}
         <main className="flex-1 overflow-y-auto pb-20 md:pb-8 p-4 sm:p-6 lg:p-8 scrollbar-thin">
@@ -45,7 +49,7 @@ export const AppLayout: React.FC = () => {
       </div>
 
       {/* Mobile Bottom Navigation Bar (md:hidden) */}
-      <MobileNav />
+      <MemoMobileNav />
     </div>
   );
 };

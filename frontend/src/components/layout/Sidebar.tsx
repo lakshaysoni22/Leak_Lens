@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -31,6 +31,7 @@ import {
 import Logo from '@/components/shared/Logo';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { prefetchRoute } from '@/App';
 
 export interface SidebarProps {
   isCollapsed: boolean;
@@ -150,6 +151,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, classNa
                     key={item.to}
                     to={item.to}
                     title={isCollapsed ? item.label : undefined}
+                    onMouseEnter={() => prefetchRoute(item.to)}
+                    onFocus={() => prefetchRoute(item.to)}
                     className={({ isActive }) =>
                       cn(
                         'sidebar-link group relative',
@@ -179,6 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, classNa
           <NavLink
             to="/app/ai-assistant"
             title={isCollapsed ? 'AI Security Assistant' : undefined}
+            onMouseEnter={() => prefetchRoute('/app/ai-assistant')}
             className={({ isActive }) =>
               cn(
                 'group relative flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 overflow-hidden',
