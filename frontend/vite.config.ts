@@ -18,32 +18,24 @@ export default defineConfig({
     // Target modern browsers for smaller bundle
     target: 'esnext',
 
-    // Minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,       // Remove console.log in production
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug'],
-        passes: 2,                // Extra compression pass
-      },
-      mangle: { toplevel: true },
-    },
+    // Use default OXC minifier (built-in, fastest)
 
     // Chunk splitting for optimal caching & parallel loading
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core React — cached permanently
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Animation library (heavy, isolated)
-          'vendor-motion': ['framer-motion'],
-          // Data & charts
-          'vendor-charts': ['recharts'],
-          // Utilities
-          'vendor-utils': ['axios', 'zustand', 'react-hot-toast', 'react-helmet-async', 'clsx'],
-          // Icons (tree-shaken per-page, but shared chunk)
-          'vendor-icons': ['lucide-react'],
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom') || id.includes('react-router-dom') || id.match(/\/react\//))
+              return 'vendor-react';
+            if (id.includes('framer-motion'))
+              return 'vendor-motion';
+            if (id.includes('recharts'))
+              return 'vendor-charts';
+            if (id.includes('axios') || id.includes('zustand') || id.includes('react-hot-toast') || id.includes('react-helmet-async') || id.includes('clsx'))
+              return 'vendor-utils';
+            if (id.includes('lucide-react'))
+              return 'vendor-icons';
+          }
         },
         // Shorter hashed filenames for smaller HTML
         chunkFileNames: 'js/[name]-[hash:8].js',
