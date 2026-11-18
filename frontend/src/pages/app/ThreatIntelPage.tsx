@@ -707,8 +707,25 @@ export default function ThreatIntelPage() {
       // Backend unavailable — use client-side OSINT
       try {
         const clientResult = await lookupThreatClient(iocType, iocValue.trim())
-        setResult(clientResult)
-        if (clientResult?.data_source) setDataSource(clientResult.data_source as string)
+        // Map client result to LookupResponse shape
+        const mapped: LookupResponse = {
+          ioc_type: (clientResult.ioc_type as string) ?? iocType,
+          ioc_value: (clientResult.ioc_value as string) ?? iocValue.trim(),
+          risk_score: (clientResult.risk_score as RiskScore) ?? { score: 0, level: 'clean', factors: [] },
+          results: [],
+          threat_results: ((clientResult.provider_results ?? clientResult.provider_status ?? []) as ThreatResult[]).filter((r: any) => r?.match),
+          context_results: [],
+          geolocation: null,
+          network_info: null,
+          summary: (clientResult.summary as string) ?? 'Client-side intelligence lookup complete.',
+          data_source: (clientResult.data_source as string) ?? 'live_intelligence',
+          queried_providers: ((clientResult.provider_results ?? []) as any[]).map((p: any) => p?.provider ?? 'unknown'),
+          failed_providers: [],
+          total_providers_queried: ((clientResult.provider_results ?? []) as any[]).length,
+          queried_at: (clientResult.created_at as string) ?? new Date().toISOString(),
+        }
+        setResult(mapped)
+        if (mapped.data_source) setDataSource(mapped.data_source)
         toast.success('Intelligence lookup complete (client-side)')
       } catch {
         const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Intelligence lookup failed — all providers unreachable'
@@ -721,8 +738,8 @@ export default function ThreatIntelPage() {
 
   const providerList = Object.entries(providers).map(([key, p]) => ({ key, ...p }))
   const activeProviders = providerList.filter(p => p.configured)
-  const hasThreats = result ? result.threat_results.some(r => r.match) : false
-  const hasThreatResults = result && result.threat_results.length > 0
+  const hasThreats = result ? (result.threat_results ?? []).some(r => r.match) : false
+  const hasThreatResults = result && (result.threat_results ?? []).length > 0
 
   return (
     <PageTransition>
@@ -862,13 +879,13 @@ export default function ThreatIntelPage() {
             )}
 
             {/* Threat Provider Results */}
-            {hasThreatResults && result.threat_results.some(r => r.match) ? (
-              result.threat_results.filter(r => !r.is_context).map((r, idx) => (
+            {hasThreatResults && (result.threat_results ?? []).some(r => r.match) ? (
+              (result.threat_results ?? []).filter(r => !r.is_context).map((r, idx) => (
                 <ProviderResultCard key={idx} result={r} />
               ))
             ) : hasThreatResults ? (
               // Show all provider cards even when clean, so user sees each provider confirmed clean
-              result.threat_results.filter(r => !r.is_context).map((r, idx) => (
+              (result.threat_results ?? []).filter(r => !r.is_context).map((r, idx) => (
                 <ProviderResultCard key={idx} result={r} />
               ))
             ) : (

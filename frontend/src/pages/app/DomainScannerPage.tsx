@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import {
@@ -43,7 +43,7 @@ const DomainScannerPage: React.FC = () => {
   const [result, setResult] = useState<DomainScanResult | null>(null);
   const [inputError, setInputError] = useState<string | undefined>();
 
-  /* ── Scan handler — NO synthetic fallback ── */
+  /* â”€â”€ Scan handler â€” NO synthetic fallback â”€â”€ */
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     setInputError(undefined);
@@ -68,7 +68,7 @@ const DomainScannerPage: React.FC = () => {
       const response = await api.post<DomainScanResult>('/domain/scan', { domain: cleanDomain });
       setResult(response.data);
     } catch {
-      // Backend unavailable — basic client-side domain check
+      // Backend unavailable â€” basic client-side domain check
       try {
         const checks: string[] = [];
         let riskScore = 0;
@@ -254,7 +254,7 @@ const DomainScannerPage: React.FC = () => {
                   <span>Security Headers Audit</span>
                 </div>
                 <p className="text-xs text-[#929BAD] leading-relaxed">
-                  Audits HSTS, CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy, and HTTP→HTTPS redirect enforcement.
+                  Audits HSTS, CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy, and HTTPâ†’HTTPS redirect enforcement.
                 </p>
               </Card>
             </div>
@@ -274,7 +274,7 @@ const DomainScannerPage: React.FC = () => {
           </div>
         )}
 
-        {/* RESULTS STATE — Domain doesn't resolve */}
+        {/* RESULTS STATE â€” Domain doesn't resolve */}
         {result && !isAnalyzing && !result.dns.dns_resolves && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -331,7 +331,7 @@ const DomainScannerPage: React.FC = () => {
           </motion.div>
         )}
 
-        {/* RESULTS STATE — Domain resolves, full results */}
+        {/* RESULTS STATE â€” Domain resolves, full results */}
         {result && !isAnalyzing && result.dns.dns_resolves && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -367,15 +367,15 @@ const DomainScannerPage: React.FC = () => {
                   <p className="text-sm sm:text-base text-[#F5F7FA] leading-relaxed max-w-2xl">
                     Overall domain security rating:{' '}
                     <span className="font-bold text-white">{result.security_score.toFixed(1)}/100</span>.
-                    {result.findings.length === 0
-                      ? ' Excellent — no security issues detected across all scanned vectors.'
-                      : ` ${result.findings.length} finding(s) identified across SSL/TLS, DNS, HTTP headers, and email security.`}
+                    {(result.findings ?? []).length === 0
+                      ? ' Excellent â€” no security issues detected across all scanned vectors.'
+                      : ` ${(result.findings ?? []).length} finding(s) identified across SSL/TLS, DNS, HTTP headers, and email security.`}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
                     <div className="px-3.5 py-1.5 rounded-lg bg-surface/80 border border-white/10 text-xs">
                       <span className="text-[#929BAD]">Findings: </span>
-                      <span className="font-bold text-white">{result.findings.length}</span>
+                      <span className="font-bold text-white">{(result.findings ?? []).length}</span>
                     </div>
 
                     <div className="px-3.5 py-1.5 rounded-lg bg-surface/80 border border-white/10 text-xs">
@@ -517,8 +517,8 @@ const DomainScannerPage: React.FC = () => {
                   <div className="space-y-1.5">
                     <span className="text-[#929BAD]">IP Addresses (A):</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {result.dns.ip_addresses && result.dns.ip_addresses.length > 0 ? (
-                        result.dns.ip_addresses.map((ip, ipIdx) => (
+                      {result.dns.ip_addresses && (result.dns?.ip_addresses ?? []).length > 0 ? (
+                        (result.dns?.ip_addresses ?? []).map((ip, ipIdx) => (
                           <span
                             key={ipIdx}
                             className="font-mono text-xs px-2.5 py-1 rounded bg-black/40 border border-white/10 text-white"
@@ -568,11 +568,11 @@ const DomainScannerPage: React.FC = () => {
                   </p>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 font-semibold text-white">
-                  {result.findings.length} Findings
+                  {(result.findings ?? []).length} Findings
                 </span>
               </div>
 
-              {result.findings.length === 0 ? (
+              {(result.findings ?? []).length === 0 ? (
                 <Card className="p-8 text-center space-y-3">
                   <div className="flex justify-center">
                     <div className="w-16 h-16 rounded-full bg-[#A3FF6F]/10 border border-[#A3FF6F]/30 flex items-center justify-center">
@@ -581,13 +581,13 @@ const DomainScannerPage: React.FC = () => {
                   </div>
                   <h4 className="text-lg font-bold text-[#A3FF6F]">No Security Issues Found</h4>
                   <p className="text-sm text-[#929BAD] max-w-md mx-auto">
-                    This domain has an excellent security posture. All checked vectors — SSL/TLS,
-                    DNS, HTTP headers, and email authentication — passed inspection.
+                    This domain has an excellent security posture. All checked vectors â€” SSL/TLS,
+                    DNS, HTTP headers, and email authentication â€” passed inspection.
                   </p>
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {result.findings.map((item: DomainFinding, idx: number) => {
+                  {(result.findings ?? []).map((item: DomainFinding, idx: number) => {
                     const severityVariant =
                       item.severity === 'critical'
                         ? 'risk-critical'
@@ -635,7 +635,7 @@ const DomainScannerPage: React.FC = () => {
             </div>
 
             {/* RECOMMENDATIONS LIST */}
-            {result.recommendations.length > 0 && (
+            {(result.recommendations ?? []).length > 0 && (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-xl font-bold text-white">Strategic Domain Hardening Plan</h3>
@@ -645,7 +645,7 @@ const DomainScannerPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2.5">
-                  {result.recommendations.map((rec, rIdx) => (
+                  {(result.recommendations ?? []).map((rec, rIdx) => (
                     <motion.div
                       key={rIdx}
                       initial={{ opacity: 0, x: -10 }}

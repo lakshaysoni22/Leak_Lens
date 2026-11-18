@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import App from './App.tsx'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 
 // Initialize theme from localStorage before first render to prevent flash
 const storedTheme = (() => {
@@ -34,11 +35,12 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-          <Toaster
+    <ErrorBoundary>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+            <Toaster
             position="top-right"
             toastOptions={{
               style: {
@@ -54,5 +56,6 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>
+  </ErrorBoundary>
   </StrictMode>,
 )

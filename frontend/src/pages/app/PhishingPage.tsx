@@ -222,8 +222,29 @@ const PhishingPage: React.FC = () => {
       // Backend unavailable — use client-side analysis
       try {
         const clientResult = await analyzePhishingClient(cleanUrl);
-        setResult(clientResult as unknown as PhishingResult);
-      } catch (err2: any) {
+        // Map client result to PhishingResult shape
+        let parsedUrl: URL;
+        try { parsedUrl = new URL(cleanUrl); } catch { parsedUrl = new URL('https://unknown.com'); }
+        const mapped: PhishingResult = {
+          domain: parsedUrl.hostname,
+          scheme: parsedUrl.protocol.replace(':', ''),
+          path: parsedUrl.pathname,
+          has_query: parsedUrl.search.length > 1,
+          risk_score: (clientResult.risk_score as number) ?? 0,
+          risk_level: (clientResult.risk_level as PhishingResult['risk_level']) ?? 'low',
+          risk_factors: ((clientResult.indicators as any[]) ?? []).map((ind: any) => ({
+            severity: ind?.severity ?? 'medium',
+            finding: ind?.indicator ?? String(ind),
+            category: 'heuristic',
+          })),
+          is_https: cleanUrl.startsWith('https'),
+          url_length: cleanUrl.length,
+          recommendations: ((clientResult.recommendations as string[]) ?? []),
+          data_notice: (clientResult.data_notice as string) ?? 'Client-side heuristic analysis',
+          analyzed_at: (clientResult.created_at as string) ?? new Date().toISOString(),
+        };
+        setResult(mapped);
+      } catch {
         toast.error('Phishing analysis failed. Please try again.');
       }
     } finally {
@@ -369,12 +390,12 @@ const PhishingPage: React.FC = () => {
         )}
 
         {/* RESULTS STATE — Clean URL (low risk, no factors) */}
-        {result && !isAnalyzing && result.risk_factors.length === 0 && (
+        {result && !isAnalyzing && (result.risk_factors ?? []).length === 0 && (
           <CleanUrlResult result={result} onReset={resetAnalysis} />
         )}
 
         {/* RESULTS STATE — Findings detected */}
-        {result && !isAnalyzing && result.risk_factors.length > 0 && (
+        {result && !isAnalyzing && (result.risk_factors ?? []).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -498,12 +519,12 @@ const PhishingPage: React.FC = () => {
                   </p>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 font-semibold text-[#FF5A5A]">
-                  {result.risk_factors.length} Red Flags
+                  {(result.risk_factors ?? []).length} Red Flags
                 </span>
               </div>
 
               <div className="space-y-3">
-                {result.risk_factors.map((factor, idx) => {
+                {(result.risk_factors ?? []).map((factor, idx) => {
                   const severityVariant =
                     factor.severity === 'critical'
                       ? 'risk-critical'
@@ -551,7 +572,7 @@ const PhishingPage: React.FC = () => {
               </div>
 
               <div className="space-y-2.5">
-                {result.recommendations.map((rec, rIdx) => (
+                {(result.recommendations ?? []).map((rec, rIdx) => (
                   <motion.div
                     key={rIdx}
                     initial={{ opacity: 0, x: -10 }}

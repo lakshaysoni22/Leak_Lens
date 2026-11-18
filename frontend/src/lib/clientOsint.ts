@@ -24,11 +24,11 @@ function buildRecommendations(texts: string[]): Recommendation[] {
 
 /**
  * Scan email via XposedOrNot public API (CORS-friendly, no key required).
+ * NEVER throws — always returns a valid ScanResult.
  */
 export async function scanEmailClient(email: string): Promise<ScanResult> {
   const exposureRecords: ExposureRecord[] = [];
   const riskFactors: RiskFactor[] = [];
-  let rawXposed: unknown = null;
 
   try {
     const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(email)}`, {
@@ -37,7 +37,6 @@ export async function scanEmailClient(email: string): Promise<ScanResult> {
 
     if (res.ok) {
       const data = await res.json();
-      rawXposed = data;
 
       const xBreaches = data?.breaches ?? data?.ExposedBreaches?.breaches_details ?? [];
       if (Array.isArray(xBreaches)) {
@@ -59,7 +58,7 @@ export async function scanEmailClient(email: string): Promise<ScanResult> {
       }
     }
   } catch {
-    // Network error — continue with what we have
+    // Network/CORS error — continue with empty results (no breach = clean)
   }
 
   const { score, level } = computeRisk(exposureRecords.length);
@@ -101,12 +100,12 @@ export async function scanEmailClient(email: string): Promise<ScanResult> {
 
   return {
     assessment_id: `client-${Date.now()}`,
-    scan_type: 'email',
+    scan_type: 'email' as const,
     identifier_hint: hint,
     risk_score: score,
     risk_level: level,
     exposure_count: exposureRecords.length,
-    data_source: 'live_intelligence',
+    data_source: 'live_intelligence' as const,
     data_notice: 'Queried via XposedOrNot public API (client-side)',
     summary: exposureRecords.length > 0
       ? `Found ${exposureRecords.length} data breach exposure${exposureRecords.length > 1 ? 's' : ''} associated with this email address.`
@@ -121,6 +120,7 @@ export async function scanEmailClient(email: string): Promise<ScanResult> {
 
 /**
  * Scan username — check platform existence + XposedOrNot.
+ * NEVER throws — always returns a valid ScanResult.
  */
 export async function scanUsernameClient(username: string): Promise<ScanResult> {
   const exposureRecords: ExposureRecord[] = [];
@@ -165,12 +165,12 @@ export async function scanUsernameClient(username: string): Promise<ScanResult> 
 
   return {
     assessment_id: `client-${Date.now()}`,
-    scan_type: 'username',
+    scan_type: 'username' as const,
     identifier_hint: username,
     risk_score: score,
     risk_level: level,
     exposure_count: exposureRecords.length,
-    data_source: 'live_intelligence',
+    data_source: 'live_intelligence' as const,
     data_notice: 'Queried via public APIs (client-side)',
     summary: platformMentions.length > 0
       ? `Username found on ${platformMentions.join(', ')}. ${exposureRecords.length > 0 ? `${exposureRecords.length} breach exposures detected.` : 'No breach exposures detected.'}`
